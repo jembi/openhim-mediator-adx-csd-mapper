@@ -30,11 +30,6 @@
           "param": "port",
           "displayName": "Port",
           "type": "number"
-        },
-        {
-          "param": "path",
-          "displayName": "Path",
-          "type": "string"
         }
       ]
     },
@@ -64,7 +59,6 @@
   ],
   "config": {
     "upstream": {
-      "path":"/",
       "port":9999,
       "host":"localhost"
     },

@@ -121,7 +121,7 @@ function setupServer() {
     let options = {
       hostname: config.upstream.host,
       port: config.upstream.port,
-      path: config.upstream.path,
+      path: inReq.url,
       method: inReq.method,
       headers: {
         'Content-Type': 'text/xml'
