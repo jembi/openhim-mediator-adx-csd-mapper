@@ -1,6 +1,6 @@
 {
   "urn": "urn:uuid:70508e92-3637-4344-9a47-d46b9b373fb4",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "adx-csd-mapper",
   "description": "Maps orgUnits in an ADX message to an alternate ID looked up in a CSD InfoManager",
   "defaultChannelConfig": [],
