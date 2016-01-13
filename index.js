@@ -7,7 +7,7 @@ const utils = require('openhim-mediator-utils');
 const xpath = require('xpath');
 
 // Config
-var config; // this will vary depending on whats set in openhim-core
+var config = {}; // this will vary depending on whats set in openhim-core
 const apiConf = require('./config/config');
 const mediatorConfig = require('./config/mediator');
 
@@ -34,9 +34,9 @@ function extractOrgUnitIds(adx) {
 function fetchFacility(orgUnitId, callback) {
   
   var options = {
-    hostname: 'localhost',
-    port: 8984,
-    path: '/CSD/csr/$DOCNAME/careServicesRequest/urn:ihe:iti:csd:2014:stored-function:facility-search',
+    hostname: config.infoman.host,
+    port: config.infoman.port,
+    path: config.infoman.path,
     method: 'POST',
     headers: {
       'Content-Type': 'text/xml'
@@ -56,16 +56,10 @@ function fetchFacility(orgUnitId, callback) {
   req.on('error', function (err) {
     callback(err);
   });
-  
-  let assigningAuthority = '$dhis_url/api/organisationUnit';
-  
-  let body = `<careServicesRequest xmlns='urn:ihe:iti:csd:2013'>
-                <function urn='urn:ihe:iti:csd:2014:stored-function:facility-search'>
-                  <requestParams>
-                    <otherID code='${orgUnitId}' assigningAuthorityName='${assigningAuthority}'/>
-                  </requestParams>
-                </function>
-              </careServicesRequest>`;
+              
+  let body = `<csd:requestParams xmlns:csd="urn:ihe:iti:csd:2013">
+                <csd:otherID>${orgUnitId}</csd:otherID>
+              </csd:requestParams>`;
   
   req.write(body);
   req.end();
@@ -87,6 +81,9 @@ function fetchMap(orgUnits, callback) {
           const doc = new dom().parseFromString(csd);
           const select = xpath.useNamespaces({'csd': 'urn:ihe:iti:csd:2013'});
           const nodes = select('//csd:CSD/csd:facilityDirectory/csd:facility/@entityID', doc);
+          if (nodes.length > 1) {
+            return reject(new Error('Multiple facilities returned when querying by other ID'));
+          }
           map.set(orgUnitId, nodes[0].value);
           resolve();
         } catch (e) {
@@ -155,7 +152,7 @@ function setupServer() {
         // Make upstream request
         let outReq = http.request(options, (inRes) => {
           outRes.writeHead(inRes.statusCode, inRes.headers);
-          console.log('Piping upstream respponse back to original sender.');
+          console.log('Piping upstream response back to original sender.');
           inRes.pipe(outRes);
         });
         
@@ -188,14 +185,15 @@ function start(callback) {
         } else {
           console.log('Successfully registered mediator!');
           let server = setupServer();
-          server.listen(8533, () => console.log('Listening on 8533...') );
-          let configEmitter = utils.activateHeartbeat(apiConf.api);
-          configEmitter.on('config', (newConfig) => {
-            console.log('Received updated config:');
-            console.log(JSON.stringify(newConfig));
-            config = newConfig;
+          server.listen(8533, () => {
+            let configEmitter = utils.activateHeartbeat(apiConf.api);
+            configEmitter.on('config', (newConfig) => {
+              console.log('Received updated config:');
+              console.log(JSON.stringify(newConfig));
+              config = newConfig;
+            });
+            callback(server);
           });
-          callback(server);
         }
       });
     });

@@ -12,6 +12,13 @@ const fetchFacility = index.__get__('fetchFacility');
 const fetchMap = index.__get__('fetchMap');
 const replaceMappedIds = index.__get__('replaceMappedIds');
 
+let config = index.__get__('config');
+config.infoman = {
+  path: '/CSD/csr/datim-small/careServicesRequest/urn:ihe:iti:csd:2014:stored-function:facility-search',
+  port: 8984,
+  host: 'localhost'
+};
+
 function spawnCsdServer() {
   var csdServer = spawn('./test-csd-server.js');
   csdServer.stdout.on('data', (data) => {

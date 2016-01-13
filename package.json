@@ -1,6 +1,6 @@
 {
   "name": "adx-csd-mapper",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Maps orgUits in an ADX message to an alternate ID looked up in a CSD InfoManager",
   "main": "index.js",
   "scripts": {

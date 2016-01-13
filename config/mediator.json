@@ -1,6 +1,6 @@
 {
   "urn": "urn:uuid:70508e92-3637-4344-9a47-d46b9b373fb4",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "adx-csd-mapper",
   "description": "Maps orgUits in an ADX message to an alternate ID looked up in a CSD InfoManager",
   "defaultChannelConfig": [],
@@ -22,11 +22,28 @@
       "type": "struct",
       "template": [
         {
-          "param": "scheme",
-          "displayName": "scheme",
-          "type": "option",
-          "values": ["http", "https"]
+          "param": "host",
+          "displayName": "Host",
+          "type": "string"
         },
+        {
+          "param": "port",
+          "displayName": "Port",
+          "type": "number"
+        },
+        {
+          "param": "path",
+          "displayName": "Path",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "param": "infoman",
+      "displayName": "InfoMan Server",
+      "description": "The InfoMan server which contains the mappings from otherID to entityID.",
+      "type": "struct",
+      "template": [
         {
           "param": "host",
           "displayName": "Host",
@@ -49,8 +66,12 @@
     "upstream": {
       "path":"/",
       "port":9999,
-      "host":"localhost",
-      "scheme":"http"
+      "host":"localhost"
+    },
+    "infoman": {
+      "path":"/CSD/csr/datim-small/careServicesRequest/urn:ihe:iti:csd:2014:stored-function:facility-search",
+      "port":8984,
+      "host":"localhost"
     }
   }
 }
