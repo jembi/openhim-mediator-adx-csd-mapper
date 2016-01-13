@@ -124,7 +124,7 @@ function setupServer() {
       path: inReq.url,
       method: inReq.method,
       headers: {
-        'Content-Type': 'text/xml'
+        'Content-Type': 'application/xml'
       }
     };
 
