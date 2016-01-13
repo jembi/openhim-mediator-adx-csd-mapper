@@ -1,0 +1,30 @@
+{
+  "name": "adx-csd-mapper",
+  "version": "0.1.0",
+  "description": "Maps orgUits in an ADX message to an alternate ID looked up in a CSD InfoManager",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "tap --cov tests.js"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "keywords": [
+    "adx",
+    "csd",
+    "datim",
+    "mapper"
+  ],
+  "author": "Jembi",
+  "license": "MPL-2.0",
+  "devDependencies": {
+    "rewire": "^2.5.1",
+    "tap": "^5.0.1"
+  },
+  "dependencies": {
+    "openhim-mediator-utils": "^0.2.2",
+    "xmldom": "0.1.19",
+    "xpath": "0.0.9"
+  }
+}
