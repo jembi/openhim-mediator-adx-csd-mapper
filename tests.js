@@ -35,6 +35,22 @@ function spawnDhisServer() {
   return dhisServer;
 }
 
+function spawnOpenHIMServer() {
+  var ohmServer = spawn('./test-openhim-server.js');
+  ohmServer.stdout.on('data', (data) => {
+    console.log(`OpenHIM Server: ${data}`);
+  });
+  return ohmServer;
+}
+
+function spawnMediatorServer() {
+  var medServer = spawn('./index.js', { env: { 'NODE_TLS_REJECT_UNAUTHORIZED': '0' } });
+  medServer.stdout.on('data', (data) => {
+    console.log(`Mediator Server: ${data}`);
+  });
+  return medServer;
+}
+
 tap.test('.extractOrgUnitIds', function (t) {
   let orgUnits = extractOrgUnitIds(fs.readFileSync('pulled_from_node.xml').toString());
   t.equals(orgUnits.size, 2);
@@ -43,7 +59,7 @@ tap.test('.extractOrgUnitIds', function (t) {
   t.end();
 });
 
-tap.test('.fetchFacility', function (t) {
+tap.test('.fetchFacility - should fetch a facility that exists', function (t) {
   var csdServer = spawnCsdServer();
   setTimeout(function () {
     fetchFacility('p.ao.pepfar.3', function (err, csd) {
@@ -55,12 +71,44 @@ tap.test('.fetchFacility', function (t) {
   }, 500);
 });
 
-tap.test('.fetchMap', function (t) {
+tap.test('.fetchFacility - should return an error if it cant connect to the CSD server', function (t) {
+  fetchFacility('p.ao.pepfar.3', function (err, csd) {
+    t.ok(err);
+    t.notOk(csd);
+    t.end();
+  });
+});
+
+tap.test('.fetchMap - should create a correcct mapping', function (t) {
   var csdServer = spawnCsdServer();
   setTimeout(function () {
     fetchMap(['p.ao.pepfar.44', 'p.ao.pepfar.3'], function (err, map) {
       t.equals(map.get('p.ao.pepfar.44'), '123');
       t.equals(map.get('p.ao.pepfar.3'), '456');
+      csdServer.kill();
+      t.end();
+    });
+  }, 500);
+});
+
+tap.test('.fetchMap - should return an error when multiple facilities are found in a response', function (t) {
+  var csdServer = spawnCsdServer();
+  setTimeout(function () {
+    fetchMap(['p.ao.pepfar.44', 'multi'], function (err, map) {
+      t.ok(err);
+      t.notOk(map);
+      csdServer.kill();
+      t.end();
+    });
+  }, 500);
+});
+
+tap.test('.fetchMap - should return an error when bad xml is returned', function (t) {
+  var csdServer = spawnCsdServer();
+  setTimeout(function () {
+    fetchMap(['p.ao.pepfar.44', 'bad-xml'], function (err, map) {
+      t.ok(err);
+      t.notOk(map);
       csdServer.kill();
       t.end();
     });
@@ -100,4 +148,31 @@ tap.test('Integration test - success case', function (t) {
       req.end(fs.readFileSync('pulled_from_node.xml'));
     });
   }, 500);
+});
+
+tap.test('Integration test - success case, spawned as a mediator process', function (t) {
+  var csdServer = spawnCsdServer();
+  var dhisServer = spawnDhisServer();
+  var ohmServer = spawnOpenHIMServer();
+  setTimeout(function () {
+    var medServer = spawnMediatorServer();
+    setTimeout(function () {
+      let options = {
+        host: 'localhost',
+        port: 8533,
+        method: 'POST'
+      };
+      const req = http.request(options, function (res) {
+        res.on('data', function (chunk) {
+          t.equals(chunk.toString(), 'CORRECT CODES USED');
+          csdServer.kill();
+          dhisServer.kill();
+          medServer.kill();
+          ohmServer.kill();
+          t.end();
+        });
+      });
+      req.end(fs.readFileSync('pulled_from_node.xml'));
+    }, 1000);
+  }, 1000);
 });
