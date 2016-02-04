@@ -30,7 +30,8 @@ function extractOrgUnitIds(adx) {
 
 /**
  * Fetches a single facility from the InfoMan by otherId, the response is sent to the callback as a full CSD XML response.
- * 
+ * @param {string} orgUnitId - the ID of the facility that you wish to fetch
+ * @param {Function} callback - the node style callback to call
  */
 function fetchFacility(orgUnitId, callback) {
   
@@ -104,6 +105,9 @@ function fetchMap(orgUnits, callback) {
 
 /**
  * Replaces the id in the adx document that is given using the provided mappings.
+ * @param {Map} map - the map of the original ID (key) to the ID to update the ADX message (value) with
+ * @param {string} adx - the ADX message
+ * @return {string} - the new ADX document 
  */
 function replaceMappedIds(map, adx) {
   const doc = new dom().parseFromString(adx);
@@ -117,6 +121,11 @@ function replaceMappedIds(map, adx) {
   return new ser().serializeToString(doc);
 }
 
+/**
+ * setupServer - configures the http server for this mediator
+ *  
+ * @return {http.Server}  the configured http server 
+ */ 
 function setupServer() {
   let server = http.createServer((inReq, outRes) => {
     let options = {
@@ -166,6 +175,12 @@ function setupServer() {
   return server;
 }
 
+
+/**
+ * start - starts the mediator
+ *  
+ * @param  {Function} callback a node style callback that is called once the server is started 
+ */ 
 function start(callback) {
   if (apiConf.register) {
     utils.registerMediator(apiConf.api, mediatorConfig, (err) => {
@@ -208,5 +223,6 @@ function start(callback) {
 exports.start = start;
 
 if (!module.parent) {
+  // if this script is run directly, start the server
   start(() => console.log('Listening on 8533...') );
 }
