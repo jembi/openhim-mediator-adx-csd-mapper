@@ -15,7 +15,9 @@ const mediatorConfig = require('./config/mediator');
 /**
  * Extracts the orgUnits from an ADX message
  * @param {string} adx - the adx message to extract from
- * @param {function} callback - a callback(err, orgUnits) that gets called with an error object if an error occurs and orgUnits which is a Set of orgUnit ID string.
+ * @param {function} callback - a callback(err, orgUnits) that gets called with
+ * an error object if an error occurs and orgUnits which is a Set of orgUnit ID
+ * string.
  */
 function extractOrgUnitIds(adx) {
   const doc = new dom().parseFromString(adx);
@@ -29,9 +31,11 @@ function extractOrgUnitIds(adx) {
 }
 
 /**
- * Fetches a single facility from the InfoMan by otherId, the response is sent to the callback as a full CSD XML response.
+ * Fetches a single facility from the InfoMan by otherId, the response is sent
+ * to the callback as a full CSD XML response.
  * @param {string} orgUnitId - the ID of the facility that you wish to fetch
- * @param {Function} callback - the node style callback to call
+ * @param {Function} callback - the node style callback to call with the body
+ * of the CSD response containing a facility, or null if one does not exist
  */
 function fetchFacility(orgUnitId, callback) {
   
@@ -70,26 +74,40 @@ function fetchFacility(orgUnitId, callback) {
 /**
  * Fetches a map of local IDs to enterprise IDs from the InfoMan
  * @param {Array} orgUnits - An array of orgUnits IDs as strings
- * @param {Function} callback - A calllback that will be called with an error object if an error occurs and a map with each map element containing the orgUnitId as a key and the corresponding enterprise ID as a value.
+ * @param {Function} callback - A calllback that will be called with an error
+ * object if an error occurs and a map with each map element containing the
+ * orgUnitId as a key and the corresponding enterprise ID as a value. If an
+ * enterprise ID cannot be found for an item, it value in the map will be null.
  */
 function fetchMap(orgUnits, callback) {
   let map = new Map();
   const promises = [];
   orgUnits.forEach(function (orgUnitId) {
     const promise = new Promise(function (resolve, reject) {
+      function errorHandler(e) {
+        console.error(e);
+        return reject(e);
+      }
+      
       fetchFacility(orgUnitId, function (err, csd) {
-        if (err) { reject(err); }
-        try {
-          const doc = new dom().parseFromString(csd);
-          const select = xpath.useNamespaces({'csd': 'urn:ihe:iti:csd:2013'});
-          const nodes = select('//csd:CSD/csd:facilityDirectory/csd:facility/@entityID', doc);
-          if (nodes.length > 1) {
-            return reject(new Error('Multiple facilities returned when querying by other ID'));
+        if (err) { return reject(err); }
+        console.log('CSD for processing: ', csd);
+        const doc = new dom({
+          errorHandler: {
+            error: errorHandler,
+            fatalError: errorHandler
           }
+        }).parseFromString(csd);
+        const select = xpath.useNamespaces({'csd': 'urn:ihe:iti:csd:2013'});
+        const nodes = select('//csd:CSD/csd:facilityDirectory/csd:facility/@entityID', doc);
+        if (nodes.length > 1) {
+          return reject(new Error('Multiple facilities returned when querying by other ID'));
+        } else if (nodes.length < 1) {
+          map.set(orgUnitId, null);
+          return resolve();
+        } else {
           map.set(orgUnitId, nodes[0].value);
-          resolve();
-        } catch (e) {
-          reject(e);
+          return resolve();
         }
       });
     });
@@ -105,7 +123,8 @@ function fetchMap(orgUnits, callback) {
 
 /**
  * Replaces the id in the adx document that is given using the provided mappings.
- * @param {Map} map - the map of the original ID (key) to the ID to update the ADX message (value) with
+ * @param {Map} map - the map of the original ID (key) to the ID to update the
+ * ADX message (value) with
  * @param {string} adx - the ADX message
  * @return {string} - the new ADX document 
  */
@@ -113,6 +132,10 @@ function replaceMappedIds(map, adx) {
   const doc = new dom().parseFromString(adx);
   const select = xpath.useNamespaces({'adx': 'urn:ihe:qrph:adx:2015'});
   map.forEach((efid, localId) => {
+    if (efid === null) {
+      // ignore this mapping
+      return;
+    }
     const nodes = select(`//adx:adx/adx:group[@orgUnit='${localId}']/@orgUnit`, doc);
     nodes.forEach(function (node) {
       node.value = efid;
@@ -150,8 +173,15 @@ function setupServer() {
       let orgUnits = extractOrgUnitIds(adx);
       console.log('Found the following orgUnits:');
       console.log(orgUnits);
-      // 2. Lookup the enterprise orgUnit Id for each local orgUnit Id, return a map
+      // 2. Lookup the enterprise orgUnit Id for each local orgUnit Id, return a
+      // map
       fetchMap(orgUnits, function (err, map) {
+        if (err) {
+          console.log('Failed to fetch a mappings:', err.stack);
+          outRes.writeHead(500);
+          outRes.end(err.message);
+          return;
+        }
         console.log('Looked up mappings in InfoManager:');
         console.log(map);
         // 3. replace each mapped item in the original adx document
@@ -179,7 +209,8 @@ function setupServer() {
 /**
  * start - starts the mediator
  *  
- * @param  {Function} callback a node style callback that is called once the server is started 
+ * @param  {Function} callback a node style callback that is called once the
+ * server is started 
  */ 
 function start(callback) {
   if (apiConf.register) {

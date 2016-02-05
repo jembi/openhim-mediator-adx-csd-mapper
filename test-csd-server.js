@@ -29,7 +29,6 @@ const response3 = `<CSD xmlns='urn:ihe:iti:csd:2013'>
                     <serviceDirectory/>
                     <organizationDirectory/>
                     <facilityDirectory/>
-                    </facilityDirectory>
                     <providerDirectory/>
                   </CSD>`;
                   
@@ -47,7 +46,7 @@ const response4 = `<CSD xmlns='urn:ihe:iti:csd:2013'>
                     <providerDirectory/>
                   </CSD>`;
                   
-const response5 = 'this isnt xml';
+const response5 = 'this<isnt<xml';
 
 const server = http.createServer(function (req, res) {
   let body = '';
@@ -65,7 +64,7 @@ const server = http.createServer(function (req, res) {
     } else if (body.indexOf('multi') > 0) {
       res.end(response4);
     }  else if (body.indexOf('bad-xml') > 0) {
-       res.end(response5);
+      res.end(response5);
     } else {
       res.end(response3);
     }

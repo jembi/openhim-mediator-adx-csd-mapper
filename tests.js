@@ -43,11 +43,15 @@ function spawnOpenHIMServer() {
   return ohmServer;
 }
 
-function spawnMediatorServer() {
+function spawnMediatorServer(stdoutListenser) {
   var medServer = spawn('./index.js', { env: { 'NODE_TLS_REJECT_UNAUTHORIZED': '0' } });
-  medServer.stdout.on('data', (data) => {
-    console.log(`Mediator Server: ${data}`);
-  });
+  if (!stdoutListenser) {
+    medServer.stdout.on('data', (data) => {
+      console.log(`Mediator Server: ${data}`);
+    });
+  } else {
+    medServer.stdout.on('data', stdoutListenser);
+  }
   return medServer;
 }
 
@@ -79,7 +83,7 @@ tap.test('.fetchFacility - should return an error if it cant connect to the CSD 
   });
 });
 
-tap.test('.fetchMap - should create a correcct mapping', function (t) {
+tap.test('.fetchMap - should create a correct mapping', function (t) {
   var csdServer = spawnCsdServer();
   setTimeout(function () {
     fetchMap(['p.ao.pepfar.44', 'p.ao.pepfar.3'], function (err, map) {
@@ -113,6 +117,18 @@ tap.test('.fetchMap - should return an error when bad xml is returned', function
       t.end();
     });
   }, 500);
+});
+
+tap.test('.fetchMap - should return an error when fetchFacility fails', function (t) {
+  const undo = index.__set__('fetchFacility', function (orgUnitId, callback) {
+    callback(new Error('Im a failure! :('));
+  });
+  fetchMap(['p.ao.pepfar.44', 'p.ao.pepfar.3'], function (err, map) {
+    t.ok(err);
+    t.notOk(map);
+    undo();
+    t.end();
+  });
 });
 
 tap.test('.replaceMappedIds', function (t) {
@@ -175,4 +191,71 @@ tap.test('Integration test - success case, spawned as a mediator process', funct
       req.end(fs.readFileSync('pulled_from_node.xml'));
     }, 1000);
   }, 1000);
+});
+
+tap.test('Integration test - failure case, codes not found', function (t) {
+  var csdServer = spawnCsdServer();
+  var dhisServer = spawnDhisServer();
+  setTimeout(function () {
+    require('./config/config').register = false;
+    index.start((server) => {
+      let options = {
+        host: 'localhost',
+        port: 8533,
+        method: 'POST'
+      };
+      const req = http.request(options, function (res) {
+        res.on('data', function (chunk) {
+          t.equals(chunk.toString(), 'INCORRECT CODES USED');
+          csdServer.kill();
+          dhisServer.kill();
+          server.close();
+          t.end();
+        });
+      });
+      req.end(fs.readFileSync('pulled_from_node_incorrect_codes.xml'));
+    });
+  }, 500);
+});
+
+tap.test('Integration test - failure case, fetchMap return an error', function (t) {
+  const undo = index.__set__('fetchMap', function (orgUnits, callback) {
+    callback(new Error('Im a failure! :('));
+  });
+  var csdServer = spawnCsdServer();
+  var dhisServer = spawnDhisServer();
+  setTimeout(function () {
+    require('./config/config').register = false;
+    index.start((server) => {
+      let options = {
+        host: 'localhost',
+        port: 8533,
+        method: 'POST'
+      };
+      const req = http.request(options, function (res) {
+        res.on('data', function (chunk) {
+          t.equals(chunk.toString(), 'Im a failure! :(');
+          t.equals(res.statusCode, 500);
+          csdServer.kill();
+          dhisServer.kill();
+          server.close();
+          undo();
+          t.end();
+        });
+      });
+      req.end(fs.readFileSync('pulled_from_node_incorrect_codes.xml'));
+    });
+  }, 500);
+});
+
+tap.test('Integration test - failure case, spawned as a mediator process but cant register', function (t) {
+  let call = 0;
+  var medServer = spawnMediatorServer(function (data) {
+    if (call === 0) {
+      t.match(data.toString(), 'Failed to register this mediator, check your config');
+      medServer.kill();
+      t.end();
+      call++;
+    }
+  });
 });

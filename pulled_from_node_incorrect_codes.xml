@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<adx xmlns="urn:ihe:qrph:adx:2015" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:ihe:qrph:adx:2015 ../schema/adx_loose.xsd" exported="2016-01-06T18:14:49Z">
+  <group orgUnit="p.ao.pepfar.888" attributeOptionCombo="13559" period="2015-12-01/P1M" dataSet="SIMS_FACILITY_PACKED">
+    <dataValue dataElement="adtx_ref_ans" value="4"/>
+    <dataValue dataElement="adtx_scr_ans" value="0"/>
+    <dataValue dataElement="adtx_art_ans" value="1"/>
+    <dataValue dataElement="adtx_as_ans" value="3"/>
+    <dataValue dataElement="adtx_pt_ans" value="2"/>
+    <dataValue dataElement="adtx_pt_commt" value="">
+      <annotation>comment</annotation>
+    </dataValue>
+    <dataValue dataElement="adtx_as_commt" value="">
+      <annotation>comment2</annotation>
+    </dataValue>
+    <dataValue dataElement="adtx_art_commt" value="">
+      <annotation>comment3</annotation>
+    </dataValue>
+  </group>
+  <group orgUnit="p.ao.pepfar.999" attributeOptionCombo="13559" period="2015-12-01/P1M" dataSet="SIMS_FACILITY_PACKED">
+    <dataValue dataElement="adtx_scr_ans" value="4"/>
+    <dataValue dataElement="adtx_art_ans" value="3"/>
+    <dataValue dataElement="adtx_as_ans" value="1"/>
+    <dataValue dataElement="adtx_pt_ans" value="1"/>
+    <dataValue dataElement="adtx_pt_commt" value="">
+      <annotation>Random comment</annotation>
+    </dataValue>
+    <dataValue dataElement="adtx_as_commt" value="">
+      <annotation>another random comment</annotation>
+    </dataValue>
+  </group>
+</adx>
