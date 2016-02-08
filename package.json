@@ -8,6 +8,9 @@
     "test": "tap --cov -t 10 tests.js",
     "view-cov": "tap --cov -t 10 --coverage-report=html tests.js"
   },
+  "bin": {
+    "adx-csd-mapper": "index.js"
+  },
   "engines": {
     "node": ">=4"
   },
