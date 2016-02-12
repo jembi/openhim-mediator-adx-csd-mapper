@@ -105,7 +105,6 @@ function fetchMap(orgUnits, callback) {
       
       fetchFacility(orgUnitId, function (err, csd) {
         if (err) { return reject(err); }
-        console.log('CSD for processing: ', csd);
         const doc = new dom({
           errorHandler: {
             error: errorHandler,
@@ -157,6 +156,19 @@ function replaceMappedIds(map, adx) {
   return new ser().serializeToString(doc);
 }
 
+/**
+ * mediatorResponse - factory function for creating a mediator response object.
+ * 
+ * @return {Object} the created mediator response object
+ */ 
+const mediatorResponse = (urn) => {
+  return {
+    'x-mediator-urn': urn,
+    'status': 'Successful',
+    'response': {},
+    'orchestrations': []
+  };
+};
 
 /**
  * doUpstreamRequest - forward the original request upstream with a new ADX message
@@ -165,7 +177,7 @@ function replaceMappedIds(map, adx) {
  * @param  {http.ServerResponse}  outRes  the outgoing response to be sent back to the original client 
  * @param  {string}               newAdx  the new ADX message to forward       
  */ 
-function doUpstreamRequest(inReq, outRes, newAdx) {
+function doUpstreamRequest(inReq, outRes, newAdx, medRes) {
   let options = {
     hostname: config.upstream.host,
     port: config.upstream.port,
@@ -179,9 +191,41 @@ function doUpstreamRequest(inReq, outRes, newAdx) {
   console.log('Making upstream request...');
   // Make upstream request
   let outReq = http.request(options, (inRes) => {
-    outRes.writeHead(inRes.statusCode, inRes.headers);
-    console.log('Piping upstream response back to original sender.');
-    inRes.pipe(outRes);
+    outRes.writeHead(inRes.statusCode, { 'Content-Type': 'application/json+openhim' });
+    
+    // determine overall status
+    if (inRes.statusCode >= 200 && inRes.statusCode < 300) {
+      medRes.status = 'Successful';
+    } else {
+      medRes.status = 'Failed';
+    }
+    
+    let body = '';
+    inRes.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    
+    inRes.on('end', () => {
+      medRes.response.status = inRes.statusCode;
+      medRes.response.headers = inRes.headers;
+      medRes.response.body = body;
+      medRes.response.timestamp = new Date();
+      
+      outRes.end(JSON.stringify(medRes));
+    });
+  });
+  
+  outReq.on('error', (err) => {
+    console.error('Error connecting to upstream server', err.stack);
+    
+    medRes.status = 'Failed';
+    medRes.response.body = err.message;
+    medRes.response.timestamp = new Date();
+    medRes.response.status = 500;
+    
+    outRes.writeHead(medRes.response.status, { 'Content-Type': 'application/json+openhim' });
+    outRes.end(JSON.stringify(medRes));
+    return;
   });
   
   outReq.end(newAdx);
@@ -241,6 +285,9 @@ function setupServer() {
       adx += chunk.toString();
     });
     
+    // construct initial mediator response object
+    const medRes = mediatorResponse(mediatorConfig.urn);
+    
     inReq.on('end', function () {
       console.log('Processing recieved ADX message...');
       // transform and write to outReq
@@ -254,11 +301,18 @@ function setupServer() {
         verifyIDs(orgUnits).then(() => {
           // on fulfilled
           // Finally
-          doUpstreamRequest(inReq, outRes, adx);
+          doUpstreamRequest(inReq, outRes, adx, medRes);
         }, (err) => {
           // on rejected
-          outRes.writeHead(err.statusCode);
-          outRes.end(err.message);
+          console.log('Failed to verify IDs:', err.stack);
+          
+          medRes.status = 'Failed';
+          medRes.response.body = err.message;
+          medRes.response.timestamp = new Date();
+          medRes.response.status = err.statusCode;
+          
+          outRes.writeHead(medRes.response.status, { 'Content-Type': 'application/json+openhim' });
+          outRes.end(JSON.stringify(medRes));
           return;
         });
       } else {
@@ -267,8 +321,14 @@ function setupServer() {
         fetchMap(orgUnits, function (err, map) {
           if (err) {
             console.log('Failed to fetch a mappings:', err.stack);
-            outRes.writeHead(500);
-            outRes.end(err.message);
+            
+            medRes.status = 'Failed';
+            medRes.response.body = err.message;
+            medRes.response.timestamp = new Date();
+            medRes.response.status = 500;
+            
+            outRes.writeHead(medRes.response.status, { 'Content-Type': 'application/json+openhim' });
+            outRes.end(JSON.stringify(medRes));
             return;
           }
           console.log('Looked up mappings in InfoManager:');
@@ -278,7 +338,7 @@ function setupServer() {
           console.log('Transformed ADX message.');
           
           // Finally
-          doUpstreamRequest(inReq, outRes, newAdx);
+          doUpstreamRequest(inReq, outRes, newAdx, medRes);
         });
       }
     });

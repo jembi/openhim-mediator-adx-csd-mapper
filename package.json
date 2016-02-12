@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "tap --cov --reporter=spec tests.js",
-    "view-cov": "tap --cov --reporter=spec --coverage-report=lcov tests.js"
+    "cov": "tap --cov --reporter=spec --coverage-report=lcov tests.js"
   },
   "bin": {
     "adx-csd-mapper": "index.js"
