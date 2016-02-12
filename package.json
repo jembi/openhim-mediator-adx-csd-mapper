@@ -5,8 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "standard && tap --cov --reporter=spec tests.js",
-    "cov": "standard && tap --cov --reporter=spec --coverage-report=lcov tests.js"
+    "test": "standard && tap --cov --reporter=spec tests/unit.js tests/integration.js",
+    "cov": "standard && tap --cov --reporter=spec --coverage-report=lcov tests/unit.js tests/integration.js",
+    "test:unit": "tap --cov --reporter=spec tests/unit.js",
+    "test:integration": "tap --cov --reporter=spec tests/integration.js"
   },
   "bin": {
     "adx-csd-mapper": "index.js"
