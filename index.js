@@ -105,7 +105,6 @@ function fetchMap(orgUnits, callback) {
       
       fetchFacility(orgUnitId, function (err, csd) {
         if (err) { return reject(err); }
-        console.log('CSD for processing: ', csd);
         const doc = new dom({
           errorHandler: {
             error: errorHandler,
@@ -214,6 +213,19 @@ function doUpstreamRequest(inReq, outRes, newAdx, medRes) {
       
       outRes.end(JSON.stringify(medRes));
     });
+  });
+  
+  outReq.on('error', (err) => {
+    console.error('Error connecting to upstream server', err.stack);
+    
+    medRes.status = 'Failed';
+    medRes.response.body = err.message;
+    medRes.response.timestamp = new Date();
+    medRes.response.status = 500;
+    
+    outRes.writeHead(medRes.response.status, { 'Content-Type': 'application/json+openhim' });
+    outRes.end(JSON.stringify(medRes));
+    return;
   });
   
   outReq.end(newAdx);
