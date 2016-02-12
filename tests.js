@@ -203,7 +203,38 @@ tap.test('Integration test - success case', function (t) {
       };
       const req = http.request(options, function (res) {
         res.on('data', function (chunk) {
-          t.equals(chunk.toString(), 'CORRECT CODES USED');
+          t.equals(JSON.parse(chunk.toString()).response.body, 'CORRECT CODES USED');
+          csdServer.kill();
+          dhisServer.kill();
+          server.close();
+          t.end();
+        });
+      });
+      req.end(fs.readFileSync('pulled_from_node.xml'));
+    });
+  }, 500);
+});
+
+tap.test('Integration test - should return a mediator response', function (t) {
+  var csdServer = spawnCsdServer();
+  var dhisServer = spawnDhisServer();
+  setTimeout(function () {
+    require('./config/config').register = false;
+    index.start((server) => {
+      let options = {
+        host: 'localhost',
+        port: 8533,
+        method: 'POST'
+      };
+      const req = http.request(options, function (res) {
+        res.on('data', function (chunk) {
+          const medRes = JSON.parse(chunk.toString());
+          console.log(medRes.urn);
+          t.equals(medRes['x-mediator-urn'], 'urn:uuid:70508e92-3637-4344-9a47-d46b9b373fb4', 'should have correct mediator urn');
+          t.ok(medRes.response, 'should have a response object');
+          t.ok(medRes.response.status, 'should have a response status');
+          t.ok(medRes.response.body, 'should have a response body');
+          t.ok(medRes.response.timestamp, 'should have a response timestamp');
           csdServer.kill();
           dhisServer.kill();
           server.close();
@@ -229,7 +260,7 @@ tap.test('Integration test - success case, spawned as a mediator process', funct
       };
       const req = http.request(options, function (res) {
         res.on('data', function (chunk) {
-          t.equals(chunk.toString(), 'CORRECT CODES USED');
+          t.equals(JSON.parse(chunk.toString()).response.body, 'CORRECT CODES USED');
           csdServer.kill();
           dhisServer.kill();
           medServer.kill();
@@ -255,7 +286,7 @@ tap.test('Integration test - failure case, codes not found', function (t) {
       };
       const req = http.request(options, function (res) {
         res.on('data', function (chunk) {
-          t.equals(chunk.toString(), 'INCORRECT CODES USED');
+          t.equals(JSON.parse(chunk.toString()).response.body, 'INCORRECT CODES USED');
           csdServer.kill();
           dhisServer.kill();
           server.close();
@@ -283,7 +314,7 @@ tap.test('Integration test - failure case, fetchMap return an error', function (
       };
       const req = http.request(options, function (res) {
         res.on('data', function (chunk) {
-          t.equals(chunk.toString(), 'Im a failure! :(');
+          t.equals(JSON.parse(chunk.toString()).response.body, 'Im a failure! :(');
           t.equals(res.statusCode, 500);
           csdServer.kill();
           dhisServer.kill();
@@ -323,7 +354,7 @@ tap.test('Integration test - verify only success case', function (t) {
       };
       const req = http.request(options, function (res) {
         res.on('data', function (chunk) {
-          t.equals(chunk.toString(), 'ORIGINAL CODES USED');
+          t.equals(JSON.parse(chunk.toString()).response.body, 'ORIGINAL CODES USED');
           csdServer.kill();
           dhisServer.kill();
           server.close();
@@ -356,7 +387,7 @@ tap.test('Integration test - verify only failure case, verifyIDs fails', functio
       };
       const req = http.request(options, function (res) {
         res.on('data', function (chunk) {
-          t.equals(chunk.toString(), 'Im a (verify) failure! :(');
+          t.equals(JSON.parse(chunk.toString()).response.body, 'Im a (verify) failure! :(');
           t.equals(res.statusCode, 500);
           undo();
           csdServer.kill();
