@@ -269,7 +269,7 @@ tap.test('Integration test - success case, spawned as a mediator process', funct
         });
       });
       req.end(fs.readFileSync('pulled_from_node.xml'));
-    }, 1000);
+    }, 1500);
   }, 1000);
 });
 
