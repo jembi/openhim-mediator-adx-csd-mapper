@@ -1,12 +1,12 @@
 {
   "name": "adx-csd-mapper",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Maps orgUnits in an ADX message to an alternate ID looked up in a CSD InfoManager",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "tap --cov -t 10 tests.js",
-    "view-cov": "tap --cov -t 10 --coverage-report=html tests.js"
+    "test": "tap --cov --reporter=spec tests.js",
+    "view-cov": "tap --cov --reporter=spec --coverage-report=lcov tests.js"
   },
   "bin": {
     "adx-csd-mapper": "index.js"

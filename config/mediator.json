@@ -1,6 +1,6 @@
 {
   "urn": "urn:uuid:70508e92-3637-4344-9a47-d46b9b373fb4",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "adx-csd-mapper",
   "description": "Maps orgUnits in an ADX message to an alternate ID looked up in a CSD InfoManager",
   "defaultChannelConfig": [],
@@ -53,8 +53,21 @@
           "param": "path",
           "displayName": "Path",
           "type": "string"
+        },
+        {
+          "param": "directory",
+          "displayName": "Search directory",
+          "description": "The directory to search",
+          "type": "option",
+          "values": ["facility", "provider", "organization"]
         }
       ]
+    },
+    {
+      "param": "verifyOnly",
+      "displayName": "Verify Only",
+      "description": "If true, this mediator will only verify that the IDs in the ADX message exist in the InfoManager. It will not do any transformation of the ADX message.",
+      "type": "bool"
     }
   ],
   "config": {
@@ -66,6 +79,7 @@
       "path":"/CSD/csr/datim-small/careServicesRequest/urn:ihe:iti:csd:2014:stored-function:facility-search",
       "port":8984,
       "host":"localhost"
-    }
+    },
+    "verifyOnly": false
   }
 }

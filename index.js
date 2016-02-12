@@ -71,6 +71,20 @@ function fetchFacility(orgUnitId, callback) {
   req.end();
 }
 
+
+/**
+ * getEntityIDNodes - extract entity ID nodes from a particular resource in CSD
+ *  
+ * @param  {string} resource   the CSD resource. Possible values are 'facility', 'organization', 'provider' or 'service'.
+ * @param  {DOM}    doc        An xml document as a DOM object. 
+ * @return {Array}             An array of attribute nodes for each entityID
+ */ 
+function getEntityIDNodes(resource, doc) {
+  const select = xpath.useNamespaces({'csd': 'urn:ihe:iti:csd:2013'});
+  const nodes = select(`//csd:CSD/csd:${resource}Directory/csd:${resource}/@entityID`, doc);
+  return nodes;
+}
+
 /**
  * Fetches a map of local IDs to enterprise IDs from the InfoMan
  * @param {Array} orgUnits - An array of orgUnits IDs as strings
@@ -98,8 +112,7 @@ function fetchMap(orgUnits, callback) {
             fatalError: errorHandler
           }
         }).parseFromString(csd);
-        const select = xpath.useNamespaces({'csd': 'urn:ihe:iti:csd:2013'});
-        const nodes = select('//csd:CSD/csd:facilityDirectory/csd:facility/@entityID', doc);
+        const nodes = getEntityIDNodes('facility', doc);
         if (nodes.length > 1) {
           return reject(new Error('Multiple facilities returned when querying by other ID'));
         } else if (nodes.length < 1) {
@@ -144,6 +157,78 @@ function replaceMappedIds(map, adx) {
   return new ser().serializeToString(doc);
 }
 
+
+/**
+ * doUpstreamRequest - forward the original request upstream with a new ADX message
+ *  
+ * @param  {http.IncomingMessage} inReq   the incoming request 
+ * @param  {http.ServerResponse}  outRes  the outgoing response to be sent back to the original client 
+ * @param  {string}               newAdx  the new ADX message to forward       
+ */ 
+function doUpstreamRequest(inReq, outRes, newAdx) {
+  let options = {
+    hostname: config.upstream.host,
+    port: config.upstream.port,
+    path: inReq.url,
+    method: inReq.method,
+    headers: {
+      'Content-Type': 'application/xml'
+    }
+  };
+  
+  console.log('Making upstream request...');
+  // Make upstream request
+  let outReq = http.request(options, (inRes) => {
+    outRes.writeHead(inRes.statusCode, inRes.headers);
+    console.log('Piping upstream response back to original sender.');
+    inRes.pipe(outRes);
+  });
+  
+  outReq.end(newAdx);
+}
+
+
+/**
+ * verifyIDs - verifies each ID exists in the InfoManager
+ *  
+ * @param  {Array} orgUnits an array of each orgUnit as a string 
+ * @return {Promise}        a Promise that will resolve when all IDs have been verified, otherwise it will reject on error 
+ */ 
+function verifyIDs(orgUnits) {
+  const promises = [];
+  orgUnits.forEach((orgUnit) => {
+    promises.push(new Promise((resolve, reject) => {
+      fetchFacility(orgUnit, (err, csd) => {
+        if (err) {
+          err.statusCode = 500;
+          reject(err);
+        }
+        const errorHandler = (err) => {
+          err = new Error(err);
+          err.statusCode = 500;
+          console.log('Failed to parse returned CSD document' + err.stack);
+          reject(err);
+        };
+        const doc = new dom({
+          errorHandler: {
+            error: errorHandler,
+            fatalError: errorHandler
+          }
+        }).parseFromString(csd);
+        const nodes = getEntityIDNodes('facility', doc);
+        if (nodes.length < 1) {
+          const err = new Error('A code that couldn\'t be verified in the InfoManager was discovered.');
+          err.statusCode = 400;
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    }));
+  });
+  return Promise.all(promises);
+}
+
 /**
  * setupServer - configures the http server for this mediator
  *  
@@ -151,16 +236,6 @@ function replaceMappedIds(map, adx) {
  */ 
 function setupServer() {
   let server = http.createServer((inReq, outRes) => {
-    let options = {
-      hostname: config.upstream.host,
-      port: config.upstream.port,
-      path: inReq.url,
-      method: inReq.method,
-      headers: {
-        'Content-Type': 'application/xml'
-      }
-    };
-
     let adx = '';
     inReq.on('data', function(chunk) {
       adx += chunk.toString();
@@ -173,31 +248,39 @@ function setupServer() {
       let orgUnits = extractOrgUnitIds(adx);
       console.log('Found the following orgUnits:');
       console.log(orgUnits);
-      // 2. Lookup the enterprise orgUnit Id for each local orgUnit Id, return a
-      // map
-      fetchMap(orgUnits, function (err, map) {
-        if (err) {
-          console.log('Failed to fetch a mappings:', err.stack);
-          outRes.writeHead(500);
+      
+      if (config.verifyOnly) {
+        // 2. Verify each orgUnit ID
+        verifyIDs(orgUnits).then(() => {
+          // on fulfilled
+          // Finally
+          doUpstreamRequest(inReq, outRes, adx);
+        }, (err) => {
+          // on rejected
+          outRes.writeHead(err.statusCode);
           outRes.end(err.message);
           return;
-        }
-        console.log('Looked up mappings in InfoManager:');
-        console.log(map);
-        // 3. replace each mapped item in the original adx document
-        let newAdx = replaceMappedIds(map, adx);
-        console.log('Transformed ADX message.');
-        
-        console.log('Making upstream request...');
-        // Make upstream request
-        let outReq = http.request(options, (inRes) => {
-          outRes.writeHead(inRes.statusCode, inRes.headers);
-          console.log('Piping upstream response back to original sender.');
-          inRes.pipe(outRes);
         });
-        
-        outReq.end(newAdx);
-      });
+      } else {
+        // 2. Lookup the enterprise orgUnit Id for each local orgUnit Id, return a
+        // map
+        fetchMap(orgUnits, function (err, map) {
+          if (err) {
+            console.log('Failed to fetch a mappings:', err.stack);
+            outRes.writeHead(500);
+            outRes.end(err.message);
+            return;
+          }
+          console.log('Looked up mappings in InfoManager:');
+          console.log(map);
+          // 3. replace each mapped item in the original adx document
+          let newAdx = replaceMappedIds(map, adx);
+          console.log('Transformed ADX message.');
+          
+          // Finally
+          doUpstreamRequest(inReq, outRes, newAdx);
+        });
+      }
     });
     
   });

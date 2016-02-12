@@ -11,6 +11,7 @@ const extractOrgUnitIds = index.__get__('extractOrgUnitIds');
 const fetchFacility = index.__get__('fetchFacility');
 const fetchMap = index.__get__('fetchMap');
 const replaceMappedIds = index.__get__('replaceMappedIds');
+const verifyIDs = index.__get__('verifyIDs');
 
 let config = index.__get__('config');
 config.infoman = {
@@ -141,6 +142,54 @@ tap.test('.replaceMappedIds', function (t) {
   t.end();
 });
 
+tap.test('.verifyIDs - should resolve on valid IDs', function (t) {
+  var csdServer = spawnCsdServer();
+  setTimeout(function () {
+    const promise = verifyIDs(['p.ao.pepfar.44', 'p.ao.pepfar.3']);
+    promise.then(function () {
+      csdServer.kill();
+      t.pass('promise resolved');
+      t.end();
+    });
+  }, 500);
+});
+
+tap.test('.verifyIDs - should reject on invalid IDs', function (t) {
+  var csdServer = spawnCsdServer();
+  setTimeout(function () {
+    const promise = verifyIDs(['p.ao.pepfar.44', 'wat']);
+    promise.then(function () {}, function (err) {
+      csdServer.kill();
+      t.equal(err.statusCode, 400);
+      t.end();
+    });
+  }, 500);
+});
+
+tap.test('.verifyIDs - should reject when cannot fetchFacility', function (t) {
+  const undo = index.__set__('fetchFacility', function (orgUnitId, callback) {
+    callback(new Error('Im a failure! :('));
+  });
+  const promise = verifyIDs(['p.ao.pepfar.3', 'p.ao.pepfar.44']);
+  promise.then(function () {}, function (err) {
+    undo();
+    t.equal(err.statusCode, 500);
+    t.end();
+  });
+});
+
+tap.test('.verifyIDs - should reject when bad xml is recieved', function (t) {
+  var csdServer = spawnCsdServer();
+  setTimeout(function () {
+    const promise = verifyIDs(['p.ao.pepfar.44', 'bad-xml']);
+    promise.then(function () {}, function (err) {
+      csdServer.kill();
+      t.equal(err.statusCode, 500);
+      t.end();
+    });
+  }, 500);
+});
+
 tap.test('Integration test - success case', function (t) {
   var csdServer = spawnCsdServer();
   var dhisServer = spawnDhisServer();
@@ -189,7 +238,7 @@ tap.test('Integration test - success case, spawned as a mediator process', funct
         });
       });
       req.end(fs.readFileSync('pulled_from_node.xml'));
-    }, 1000);
+    }, 1500);
   }, 1000);
 });
 
@@ -258,4 +307,65 @@ tap.test('Integration test - failure case, spawned as a mediator process but can
       call++;
     }
   });
+});
+
+tap.test('Integration test - verify only success case', function (t) {
+  var csdServer = spawnCsdServer();
+  var dhisServer = spawnDhisServer();
+  setTimeout(function () {
+    require('./config/config').register = false;
+    require('./config/mediator').config.verifyOnly = true;
+    index.start((server) => {
+      let options = {
+        host: 'localhost',
+        port: 8533,
+        method: 'POST'
+      };
+      const req = http.request(options, function (res) {
+        res.on('data', function (chunk) {
+          t.equals(chunk.toString(), 'ORIGINAL CODES USED');
+          csdServer.kill();
+          dhisServer.kill();
+          server.close();
+          t.end();
+        });
+      });
+      req.end(fs.readFileSync('pulled_from_node.xml'));
+    });
+  }, 500);
+});
+
+tap.test('Integration test - verify only failure case, verifyIDs fails', function (t) {
+  const undo = index.__set__('verifyIDs', function () {
+    return new Promise(function (resolve, reject) {
+      const err = new Error('Im a (verify) failure! :(');
+      err.statusCode = 500;
+      reject(err);
+    });
+  });
+  var csdServer = spawnCsdServer();
+  var dhisServer = spawnDhisServer();
+  setTimeout(function () {
+    require('./config/config').register = false;
+    require('./config/mediator').config.verifyOnly = true;
+    index.start((server) => {
+      let options = {
+        host: 'localhost',
+        port: 8533,
+        method: 'POST'
+      };
+      const req = http.request(options, function (res) {
+        res.on('data', function (chunk) {
+          t.equals(chunk.toString(), 'Im a (verify) failure! :(');
+          t.equals(res.statusCode, 500);
+          undo();
+          csdServer.kill();
+          dhisServer.kill();
+          server.close();
+          t.end();
+        });
+      });
+      req.end(fs.readFileSync('pulled_from_node.xml'));
+    });
+  }, 500);
 });
