@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "tap --cov --reporter=spec tests.js",
-    "cov": "tap --cov --reporter=spec --coverage-report=lcov tests.js"
+    "test": "standard && tap --cov --reporter=spec tests.js",
+    "cov": "standard && tap --cov --reporter=spec --coverage-report=lcov tests.js"
   },
   "bin": {
     "adx-csd-mapper": "index.js"
@@ -24,6 +24,7 @@
   "license": "MPL-2.0",
   "devDependencies": {
     "rewire": "^2.5.1",
+    "standard": "^6.0.4",
     "tap": "^5.0.1"
   },
   "dependencies": {

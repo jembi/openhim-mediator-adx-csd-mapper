@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/jembi/openhim-mediator-adx-csd-mapper.svg)](https://travis-ci.org/jembi/openhim-mediator-adx-csd-mapper) [![codecov.io](https://codecov.io/github/jembi/openhim-mediator-adx-csd-mapper/coverage.svg?branch=master)](https://codecov.io/github/jembi/openhim-mediator-adx-csd-mapper?branch=master)
+[![Build Status](https://travis-ci.org/jembi/openhim-mediator-adx-csd-mapper.svg)](https://travis-ci.org/jembi/openhim-mediator-adx-csd-mapper) [![codecov.io](https://codecov.io/github/jembi/openhim-mediator-adx-csd-mapper/coverage.svg?branch=master)](https://codecov.io/github/jembi/openhim-mediator-adx-csd-mapper?branch=master) [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
 
 ADX Mapper using CSD
 ====================
