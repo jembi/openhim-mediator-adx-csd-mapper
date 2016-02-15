@@ -16,7 +16,8 @@ let config = index.__get__('config')
 config.infoman = {
   path: '/CSD/csr/datim-small/careServicesRequest/urn:ihe:iti:csd:2014:stored-function:facility-search',
   port: 8984,
-  host: 'localhost'
+  host: 'localhost',
+  directory: 'facility'
 }
 
 function spawnCsdServer () {

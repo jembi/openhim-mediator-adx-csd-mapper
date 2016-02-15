@@ -1,6 +1,6 @@
 {
   "urn": "urn:uuid:70508e92-3637-4344-9a47-d46b9b373fb4",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "name": "adx-csd-mapper",
   "description": "Maps orgUnits in an ADX message to an alternate ID looked up in a CSD InfoManager",
   "defaultChannelConfig": [],
@@ -59,7 +59,7 @@
           "displayName": "Search directory",
           "description": "The directory to search",
           "type": "option",
-          "values": ["facility", "provider", "organization"]
+          "values": ["facility", "provider", "organization", "service"]
         }
       ]
     },
@@ -78,7 +78,8 @@
     "infoman": {
       "path":"/CSD/csr/datim-small/careServicesRequest/urn:ihe:iti:csd:2014:stored-function:facility-search",
       "port":8984,
-      "host":"localhost"
+      "host":"localhost",
+      "directory": "facility"
     },
     "verifyOnly": false
   }
