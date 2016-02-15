@@ -31,13 +31,13 @@ function extractOrgUnitIds (adx) {
 }
 
 /**
- * Fetches a single facility from the InfoMan by otherId, the response is sent
+ * Fetches a single resource from the InfoMan by otherId, the response is sent
  * to the callback as a full CSD XML response.
- * @param {string} orgUnitId - the ID of the facility that you wish to fetch
+ * @param {string} orgUnitId - the ID of the resource that you wish to fetch
  * @param {Function} callback - the node style callback to call with the body
- * of the CSD response containing a facility, or null if one does not exist
+ * of the CSD response containing a resource, or null if one does not exist
  */
-function fetchFacility (orgUnitId, callback) {
+function fetchResource (orgUnitId, callback) {
   var options = {
     hostname: config.infoman.host,
     port: config.infoman.port,
@@ -101,7 +101,7 @@ function fetchMap (orgUnits, callback) {
         return reject(e)
       }
 
-      fetchFacility(orgUnitId, function (err, csd) {
+      fetchResource(orgUnitId, function (err, csd) {
         if (err) { return reject(err) }
         const doc = new Dom({
           errorHandler: {
@@ -109,9 +109,9 @@ function fetchMap (orgUnits, callback) {
             fatalError: errorHandler
           }
         }).parseFromString(csd)
-        const nodes = getEntityIDNodes('facility', doc)
+        const nodes = getEntityIDNodes(config.infoman.directory, doc)
         if (nodes.length > 1) {
-          return reject(new Error('Multiple facilities returned when querying by other ID'))
+          return reject(new Error('Multiple resources returned when querying by other ID'))
         } else if (nodes.length < 1) {
           map.set(orgUnitId, null)
           return resolve()
@@ -239,7 +239,7 @@ function verifyIDs (orgUnits) {
   const promises = []
   orgUnits.forEach((orgUnit) => {
     promises.push(new Promise((resolve, reject) => {
-      fetchFacility(orgUnit, (err, csd) => {
+      fetchResource(orgUnit, (err, csd) => {
         if (err) {
           err.statusCode = 500
           reject(err)
@@ -256,7 +256,7 @@ function verifyIDs (orgUnits) {
             fatalError: errorHandler
           }
         }).parseFromString(csd)
-        const nodes = getEntityIDNodes('facility', doc)
+        const nodes = getEntityIDNodes(config.infoman.directory, doc)
         if (nodes.length < 1) {
           const err = new Error("A code that couldn't be verified in the InfoManager was discovered.")
           err.statusCode = 400

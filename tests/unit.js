@@ -7,7 +7,7 @@ const spawn = require('child_process').spawn
 
 const index = rewire('../index.js')
 const extractOrgUnitIds = index.__get__('extractOrgUnitIds')
-const fetchFacility = index.__get__('fetchFacility')
+const fetchResource = index.__get__('fetchResource')
 const fetchMap = index.__get__('fetchMap')
 const replaceMappedIds = index.__get__('replaceMappedIds')
 const verifyIDs = index.__get__('verifyIDs')
@@ -20,7 +20,8 @@ let config = index.__get__('config')
 config.infoman = {
   path: '/CSD/csr/datim-small/careServicesRequest/urn:ihe:iti:csd:2014:stored-function:facility-search',
   port: 8984,
-  host: 'localhost'
+  host: 'localhost',
+  directory: 'facility'
 }
 
 function spawnCsdServer () {
@@ -39,10 +40,10 @@ tap.test('.extractOrgUnitIds', function (t) {
   t.end()
 })
 
-tap.test('.fetchFacility - should fetch a facility that exists', function (t) {
+tap.test('.fetchResource - should fetch a resource that exists', function (t) {
   var csdServer = spawnCsdServer()
   setTimeout(function () {
-    fetchFacility('p.ao.pepfar.3', function (err, csd) {
+    fetchResource('p.ao.pepfar.3', function (err, csd) {
       t.error(err)
       t.match(csd, 'facility entityID=')
       csdServer.kill()
@@ -51,8 +52,8 @@ tap.test('.fetchFacility - should fetch a facility that exists', function (t) {
   }, 1000)
 })
 
-tap.test('.fetchFacility - should return an error if it cant connect to the CSD server', function (t) {
-  fetchFacility('p.ao.pepfar.3', function (err, csd) {
+tap.test('.fetchResource - should return an error if it cant connect to the CSD server', function (t) {
+  fetchResource('p.ao.pepfar.3', function (err, csd) {
     t.ok(err)
     t.notOk(csd)
     t.end()
@@ -96,8 +97,8 @@ tap.test('.fetchMap - should return an error when bad xml is returned', function
   }, 1000)
 })
 
-tap.test('.fetchMap - should return an error when fetchFacility fails', function (t) {
-  const undo = index.__set__('fetchFacility', function (orgUnitId, callback) {
+tap.test('.fetchMap - should return an error when fetchResource fails', function (t) {
+  const undo = index.__set__('fetchResource', function (orgUnitId, callback) {
     callback(new Error('Im a failure! :('))
   })
   fetchMap(['p.ao.pepfar.44', 'p.ao.pepfar.3'], function (err, map) {
@@ -142,8 +143,8 @@ tap.test('.verifyIDs - should reject on invalid IDs', function (t) {
   }, 1000)
 })
 
-tap.test('.verifyIDs - should reject when cannot fetchFacility', function (t) {
-  const undo = index.__set__('fetchFacility', function (orgUnitId, callback) {
+tap.test('.verifyIDs - should reject when cannot fetchResource', function (t) {
+  const undo = index.__set__('fetchResource', function (orgUnitId, callback) {
     callback(new Error('Im a failure! :('))
   })
   const promise = verifyIDs(['p.ao.pepfar.3', 'p.ao.pepfar.44'])
